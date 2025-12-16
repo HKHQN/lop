@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Blockchain Laptop</title>
+    <style>
+        * { box-sizing: border-box; }
+        
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f0f2f5; color: #333; }
+        header { background: linear-gradient(to right, #512da8, #7b1fa2); color: white; text-align: center; padding: 60px 20px; }
+        h1 { margin: 0; font-size: 2.5em; }
+        h2 { text-align: center; margin: 40px 0 20px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .intro { text-align: center; font-size: 1.2em; margin-bottom: 40px; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; overflow: hidden; }
+        .card img { width: 100%; height: auto; border-radius: 8px; object-fit: contain; }
+        .token { background: #ede7f6; padding: 30px; border-radius: 10px; text-align: center; margin: 40px 0; word-wrap: break-word; /* Fix tràn text dài */ }
+        .token a { color: #512da8; font-weight: bold; margin: 0 10px; word-wrap: break-word; }
+        footer { background: #333; color: white; text-align: center; padding: 20px; margin-top: 50px; }
+
+        /* Slider */
+        .slider-wrapper { max-width: 100%; margin: 0 auto; border-radius: 10px; overflow: hidden; height: 60vh; position: relative; }
+        .slider { position: relative; width: 100%; height: 100%; }
+        .slides { display: flex; width: 100%; height: 100%; transition: transform 0.5s ease; }
+        .slides img { width: 100%; height: 100%; flex-shrink: 0; object-fit: contain; background: #000; }
+        .prev, .next { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; padding: 15px 20px; cursor: pointer; font-size: 1.8em; z-index: 10; }
+        .prev { left: 10px; }
+        .next { right: 10px; }
+        .prev:hover, .next:hover { background: rgba(0,0,0,0.8); }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2em; }
+            .features { grid-template-columns: 1fr; }
+            .slider-wrapper { height: 50vh; }
+            .prev, .next { padding: 10px 15px; font-size: 1.5em; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Responsive Blockchain Laptop</h1>
+        <p>Chiếc laptop tương lai tích hợp công nghệ blockchain mạnh mẽ</p>
+    </header>
+
+    <div class="container">
+        <div class="intro">
+            <p>Đây là concept về một chiếc laptop cao cấp, được thiết kế dành riêng cho cộng đồng blockchain: mining, trading, phát triển dApp, với hiệu suất vượt trội và tích hợp ví hardware an toàn.</p>
+        </div>
+
+        <h2>Hình ảnh sản phẩm</h2>
+        <div class="slider-wrapper">
+            <div class="slider">
+                <div class="slides" id="slides"></div>
+                <button class="prev" onclick="changeSlide(-1)">&#10094;</button>
+                <button class="next" onclick="changeSlide(1)">&#10095;</button>
+            </div>
+        </div>
+
+        <h2>Tính năng nổi bật</h2>
+        <div class="features">
+            <div class="card">
+                <img src="https://cdn.mos.cms.futurecdn.net/sCTUm3TGXAahNHu7wghtpP-2962-80.jpg" alt="Gaming Laptop" loading="lazy">
+                <h3>Hiệu suất cao</h3>
+                <p>CPU mạnh mẽ, GPU RTX mới nhất, phù hợp mining và rendering blockchain.</p>
+            </div>
+            <div class="card">
+                <img src="https://cdn.mos.cms.futurecdn.net/dkEx6momy9WazkfwuPRLJW.png" alt="High-end Laptop" loading="lazy">
+                <h3>Tích hợp Blockchain</h3>
+                <p>Hỗ trợ ví lạnh tích hợp, kết nối trực tiếp Polygon & Ethereum.</p>
+            </div>
+            <div class="card">
+                <img src="https://media.wired.com/photos/6843d25f93d1ae9631e55a37/4:3/w_1064,h_798,c_limit/Best%20gaming%20laptops%202025%20update_.png" alt="Modern Laptop" loading="lazy">
+                <h3>Thiết kế Responsive</h3>
+                <p>Màn hình OLED 16 inch, pin lâu, trọng lượng nhẹ.</p>
+            </div>
+        </div>
+
+        <div class="token">
+            <h2>Token đại diện dự án</h2>
+            <p>Token ERC-20 trên mạng Polygon (fungible token - không phải NFT):</p>
+            <p><strong>Contract Address:</strong> 
+                <a href="https://polygonscan.com/token/0x9d475bd4f8d1b462ee4eda5aa6fa238bdd252103" target="_blank">0x9d475bd4f8d1b462ee4eda5aa6fa238bdd252103</a>
+            </p>
+            <p><strong>Trade trên DEX:</strong> 
+                <a href="https://dex.coinmarketcap.com/token/polygon/0x9d475bd4f8d1b462ee4eda5aa6fa238bdd252103/" target="_blank">Xem trên CoinMarketCap DEX</a>
+            </p>
+            <p>Token này đại diện cho giá trị và quyền sở hữu trong hệ sinh thái laptop blockchain.</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Responsive Blockchain Laptop Concept | Powered by Polygon</p>
+    </footer>
+
+    <script>
+        const images = [
+            "https://s.globalsources.com/IMAGES/skc/20240618084233423363522.jpg",
+            "https://cdn.builtin.com/cdn-cgi/image/f=auto,fit=cover,w=1200,h=635,q=80/sites/www.builtin.com/files/2022-09/laptop-blocks-blockchain-become-blockchain-developer.png",
+            "https://www.harrisburgu.edu/wp-content/uploads/blockchain-page-banner.jpg",
+            "https://images.pexels.com/photos/14751274/pexels-photo-14751274.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+            "https://cdn.mos.cms.futurecdn.net/sCTUm3TGXAahNHu7wghtpP-2962-80.jpg"
+        ];
+
+        let currentSlide = 0;
+        const slidesContainer = document.getElementById('slides');
+
+        function renderSlides() {
+            slidesContainer.innerHTML = '';
+            images.forEach((src, index) => {
+                const img = document.createElement('img');
+                img.dataset.src = src; // Lazy load với data-src
+                img.alt = "Blockchain Laptop Concept";
+                if (index === 0) img.src = src; // Load ngay slide đầu tiên
+                slidesContainer.appendChild(img);
+            });
+            updateSlidePosition();
+
+            // IntersectionObserver cho lazy load slider
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.dataset.src;
+                        img.removeAttribute('data-src');
+                        observer.unobserve(img);
+                    }
+                });
+            }, { rootMargin: '0px 0px 200px 0px' });
+
+            document.querySelectorAll('.slides img[data-src]').forEach(img => observer.observe(img));
+        }
+
+        function updateSlidePosition() {
+            slidesContainer.style.transform = `translateX(-${currentSlide * 100}%)`;
+        }
+
+        function changeSlide(direction) {
+            currentSlide += direction;
+            if (currentSlide < 0) currentSlide = images.length - 1;
+            if (currentSlide >= images.length) currentSlide = 0;
+            updateSlidePosition();
+
+            // Load ảnh slide hiện tại và xung quanh nếu chưa load
+            const imgs = slidesContainer.querySelectorAll('img');
+            if (imgs[currentSlide] && imgs[currentSlide].dataset.src) {
+                imgs[currentSlide].src = imgs[currentSlide].dataset.src;
+            }
+        }
+
+        renderSlides();
+    </script>
+</body>
+</html>
