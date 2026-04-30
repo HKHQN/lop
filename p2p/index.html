@@ -3,87 +3,1138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Node Data Sharing</title>
+    <title>P2P Node Mesh — Data Fabric</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .node-count { font-size: 2em; color: #007bff; font-weight: bold; }
-        .status-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .dot { height: 12px; width: 12px; background-color: #28a745; border-radius: 50%; display: inline-block; }
-        pre { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; max-height: 400px; overflow-y: auto; }
-        .local-db-info { color: #666; font-size: 0.9em; margin-top: 10px; }
+        :root {
+            --bg: #080c10;
+            --surface: #0d1117;
+            --surface2: #161b22;
+            --border: #21262d;
+            --accent: #00ff88;
+            --accent2: #00b4ff;
+            --accent3: #ff6b35;
+            --warn: #ffd700;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --mono: 'Share Tech Mono', monospace;
+            --sans: 'Syne', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* === GRID BG === */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #app { position: relative; z-index: 1; padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+        /* === HEADER === */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-size: 1.4em;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--accent);
+        }
+        .logo span { color: var(--text); }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 0.8em;
+            color: var(--muted);
+        }
+
+        /* === PULSE DOT === */
+        .pulse {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 0 0 rgba(0,255,136,0.5);
+            animation: ping 2s infinite;
+        }
+        .pulse.offline { background: #ff4c4c; box-shadow: none; animation: none; }
+        .pulse.connecting { background: var(--warn); animation: blink 0.8s infinite; }
+
+        @keyframes ping {
+            0% { box-shadow: 0 0 0 0 rgba(0,255,136,0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(0,255,136,0); }
+            100% { box-shadow: 0 0 0 0 rgba(0,255,136,0); }
+        }
+        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+        /* === DASHBOARD GRID === */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) { .dashboard { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 500px) { .dashboard { grid-template-columns: 1fr; } }
+
+        .metric-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .metric-card:hover { border-color: var(--accent); }
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+        }
+        .metric-card.green::after { background: var(--accent); }
+        .metric-card.blue::after { background: var(--accent2); }
+        .metric-card.orange::after { background: var(--accent3); }
+        .metric-card.yellow::after { background: var(--warn); }
+
+        .metric-label {
+            font-family: var(--mono);
+            font-size: 0.7em;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 2.4em;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .metric-value.green { color: var(--accent); }
+        .metric-value.blue { color: var(--accent2); }
+        .metric-value.orange { color: var(--accent3); }
+        .metric-value.yellow { color: var(--warn); }
+        .metric-sub {
+            font-family: var(--mono);
+            font-size: 0.72em;
+            color: var(--muted);
+        }
+
+        /* === MAIN LAYOUT === */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 1000px) { .main-grid { grid-template-columns: 1fr; } }
+
+        /* === PANELS === */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--mono);
+            font-size: 0.78em;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .panel-header .title { color: var(--text); font-weight: 700; }
+
+        /* === DATA DISPLAY === */
+        #data-display {
+            font-family: var(--mono);
+            font-size: 0.82em;
+            color: #a8d4a0;
+            padding: 16px;
+            height: 420px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: var(--bg);
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        #data-display::-webkit-scrollbar { width: 4px; }
+        #data-display::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        /* === THREAD LOG === */
+        #thread-log {
+            font-family: var(--mono);
+            font-size: 0.76em;
+            height: 420px;
+            overflow-y: auto;
+            padding: 12px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        #thread-log::-webkit-scrollbar { width: 4px; }
+        #thread-log::-webkit-scrollbar-thumb { background: var(--border); }
+
+        .log-entry {
+            display: flex;
+            gap: 8px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            animation: fadeIn 0.3s ease;
+            line-height: 1.5;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+
+        .log-entry:hover { background: var(--surface2); }
+        .log-time { color: var(--muted); flex-shrink: 0; }
+        .log-thread { flex-shrink: 0; font-weight: 700; padding: 0 4px; border-radius: 3px; font-size: 0.85em; }
+        .t-presence { color: var(--accent); }
+        .t-sync { color: var(--accent2); }
+        .t-bw { color: var(--accent3); }
+        .t-conn { color: var(--warn); }
+        .t-save { color: #b794f4; }
+        .t-sys { color: var(--muted); }
+        .log-msg { color: var(--text); }
+        .log-msg.ok { color: var(--accent); }
+        .log-msg.err { color: #ff4c4c; }
+        .log-msg.warn { color: var(--warn); }
+
+        /* === BANDWIDTH CHART === */
+        .bw-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        #bw-canvas {
+            width: 100%;
+            height: 120px;
+            display: block;
+            background: var(--bg);
+        }
+
+        .bw-legend {
+            display: flex;
+            gap: 20px;
+            padding: 10px 18px;
+            border-top: 1px solid var(--border);
+            font-family: var(--mono);
+            font-size: 0.75em;
+        }
+        .bw-legend-item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+        .bw-legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+        /* === FIREBASE CONFIG === */
+        .config-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .config-panel h3 {
+            font-family: var(--mono);
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            margin-bottom: 14px;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .input-row input {
+            flex: 1;
+            min-width: 280px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.85em;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-row input:focus { border-color: var(--accent); }
+        .input-row input::placeholder { color: var(--muted); }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-family: var(--sans);
+            font-weight: 700;
+            font-size: 0.85em;
+            transition: all 0.15s;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+        .btn-primary:hover { background: #00e07a; transform: translateY(-1px); }
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--accent2); }
+
+        .config-status {
+            margin-top: 10px;
+            font-family: var(--mono);
+            font-size: 0.78em;
+            color: var(--muted);
+        }
+
+        /* === NODE MESH VIZ === */
+        #node-canvas {
+            width: 100%;
+            height: 180px;
+            display: block;
+            background: var(--bg);
+        }
+
+        /* === BOTTOM ACTIONS === */
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        /* === TOAST === */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--surface2);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-family: var(--mono);
+            font-size: 0.82em;
+            color: var(--accent);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+        #toast.show { opacity: 1; transform: none; }
+
+        /* === THREAD STATUS BAR === */
+        .thread-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .thread-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-family: var(--mono);
+            font-size: 0.73em;
+        }
+        .thread-pill .dot-sm {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+        }
+        .thread-pill.active .dot-sm { animation: ping 2s infinite; }
+        .thread-pill .name { color: var(--muted); }
+        .thread-pill .state { font-weight: 700; }
+
+        /* SCROLLBAR */
+        * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+        .divider { width: 1px; height: 16px; background: var(--border); }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <div class="status-bar">
-            <span class="dot"></span>
-            <span>Hệ thống P2P: <strong>Đang hoạt động</strong></span>
+<div id="app">
+    <header>
+        <div class="logo">P2P<span>MESH</span> <small style="font-size:0.55em;color:var(--muted);font-weight:400;">NODE FABRIC v2.0</small></div>
+        <div class="header-status">
+            <div class="pulse connecting" id="conn-dot"></div>
+            <span id="conn-label">Đang khởi động...</span>
+            <div class="divider"></div>
+            <span id="uptime-label">0s</span>
         </div>
-        <div>Số máy (Nodes) đang chia sẻ: <span id="node-count" class="node-count">0</span></div>
-        <div class="local-db-info" id="storage-status">Trạng thái bộ nhớ: Đang kiểm tra...</div>
+    </header>
+
+    <!-- Thread status pills -->
+    <div class="thread-bar" id="thread-bar">
+        <div class="thread-pill" id="tp-presence">
+            <div class="dot-sm" style="background:var(--accent)"></div>
+            <span class="name">PRESENCE</span>
+            <span class="state" style="color:var(--accent)">IDLE</span>
+        </div>
+        <div class="thread-pill" id="tp-sync">
+            <div class="dot-sm" style="background:var(--accent2)"></div>
+            <span class="name">SYNC</span>
+            <span class="state" style="color:var(--accent2)">IDLE</span>
+        </div>
+        <div class="thread-pill" id="tp-bw">
+            <div class="dot-sm" style="background:var(--accent3)"></div>
+            <span class="name">BANDWIDTH</span>
+            <span class="state" style="color:var(--accent3)">IDLE</span>
+        </div>
+        <div class="thread-pill" id="tp-save">
+            <div class="dot-sm" style="background:#b794f4"></div>
+            <span class="name">PERSIST</span>
+            <span class="state" style="color:#b794f4">IDLE</span>
+        </div>
+        <div class="thread-pill" id="tp-conn">
+            <div class="dot-sm" style="background:var(--warn)"></div>
+            <span class="name">WATCHDOG</span>
+            <span class="state" style="color:var(--warn)">IDLE</span>
+        </div>
     </div>
 
-    <h3>Dữ liệu được đồng bộ về máy này:</h3>
-    <pre id="data-display">Đang đồng bộ dữ liệu từ các Peer...</pre>
+    <!-- Metrics -->
+    <div class="dashboard">
+        <div class="metric-card green">
+            <div class="metric-label">Nodes Online</div>
+            <div class="metric-value green" id="m-nodes">0</div>
+            <div class="metric-sub" id="m-nodes-sub">Chưa có kết nối</div>
+        </div>
+        <div class="metric-card blue">
+            <div class="metric-label">Dữ liệu đồng bộ</div>
+            <div class="metric-value blue" id="m-bytes">0</div>
+            <div class="metric-sub" id="m-bytes-sub">bytes nhận được</div>
+        </div>
+        <div class="metric-card orange">
+            <div class="metric-label">Băng thông / giây</div>
+            <div class="metric-value orange" id="m-bw">0</div>
+            <div class="metric-sub">B/s trung bình</div>
+        </div>
+        <div class="metric-card yellow">
+            <div class="metric-label">Lần sync</div>
+            <div class="metric-value yellow" id="m-syncs">0</div>
+            <div class="metric-sub" id="m-sync-sub">lần cập nhật</div>
+        </div>
+    </div>
 
-    <script type="module">
-        // SỬA LỖI: Import đầy đủ từ CDN
-        import { initializeApp } from "https://gstatic.com";
-        import { getDatabase, ref, onValue, push, onDisconnect, set, serverTimestamp } from "https://gstatic.com";
+    <!-- Bandwidth Chart -->
+    <div class="bw-section">
+        <div class="panel-header">
+            <span class="title">BANDWIDTH MONITOR</span>
+            <span id="bw-current">0 B/s</span>
+        </div>
+        <canvas id="bw-canvas"></canvas>
+        <div class="bw-legend">
+            <div class="bw-legend-item">
+                <div class="bw-legend-dot" style="background:var(--accent3)"></div>
+                <span>Inbound (nhận)</span>
+            </div>
+            <div class="bw-legend-item">
+                <div class="bw-legend-dot" style="background:var(--accent2)"></div>
+                <span>Shared (chia sẻ)</span>
+            </div>
+        </div>
+    </div>
 
-        // Cấu hình chuẩn (Xóa đuôi .json ở databaseURL)
-        const firebaseConfig = {
-            databaseURL: "https://khoanchitrongngay-default-rtdb.asia-southeast1.firebasedatabase.app"
+    <!-- Node mesh viz + Data -->
+    <div class="main-grid">
+        <div>
+            <!-- Node mesh canvas -->
+            <div class="panel" style="margin-bottom:20px;">
+                <div class="panel-header">
+                    <span class="title">NODE MESH TOPOLOGY</span>
+                    <span id="mesh-info" style="font-family:var(--mono);font-size:0.75em;color:var(--muted)">0 nodes</span>
+                </div>
+                <canvas id="node-canvas"></canvas>
+            </div>
+
+            <!-- Data display -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="title">SYNCHRONIZED DATA</span>
+                    <span id="data-size">0 bytes</span>
+                </div>
+                <pre id="data-display">Đang khởi tạo threads...</pre>
+            </div>
+        </div>
+
+        <!-- Thread log -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="title">THREAD LOG</span>
+                <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.7em;" onclick="clearLog()">CLR</button>
+            </div>
+            <div id="thread-log"></div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+        <button class="btn btn-secondary" onclick="exportData()">⬇ Export JSON</button>
+        <button class="btn btn-secondary" onclick="clearCache()">🗑 Clear Cache</button>
+        <button class="btn btn-secondary" onclick="forceSync()">↺ Force Sync</button>
+    </div>
+
+    <!-- Firebase Config -->
+    <div class="config-panel">
+        <h3>⚙ Firebase Database URL</h3>
+        <div class="input-row">
+            <input type="text" id="firebase-url" 
+                   value="https://khoanchitrongngay-default-rtdb.asia-southeast1.firebasedatabase.app"
+                   placeholder="https://your-project-default-rtdb.firebasedatabase.app">
+            <button class="btn btn-primary" onclick="changeFirebaseURL()">Áp dụng & Tải lại</button>
+        </div>
+        <div class="config-status" id="config-status">Đang dùng database mặc định</div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+// =====================================================================
+// P2P NODE MESH — THREAD-BASED ARCHITECTURE v2.0
+// =====================================================================
+
+// --- STATE ---
+const State = {
+    db: null,
+    firebaseApp: null,
+    firebaseModules: null,
+    nodeId: 'node_' + Date.now() + '_' + Math.random().toString(36).substr(2,6),
+    currentPresenceRef: null,
+    isConnected: false,
+    startTime: Date.now(),
+    totalBytes: 0,
+    syncCount: 0,
+    lastSyncData: null,
+    bwHistory: new Array(60).fill(0),     // 60 samples for chart
+    bwShared: new Array(60).fill(0),
+    lastBwBytes: 0,
+    bwInterval: null,
+    nodes: [],                            // node list for mesh viz
+    threads: {
+        presence: 'IDLE',
+        sync: 'IDLE',
+        bandwidth: 'IDLE',
+        persist: 'IDLE',
+        watchdog: 'IDLE'
+    },
+    unsubscribers: [],
+    forceReload: false,
+};
+
+// --- THREAD SYSTEM ---
+const Thread = {
+    setStatus(name, status, color) {
+        State.threads[name] = status;
+        const tp = document.getElementById('tp-' + name);
+        if (!tp) return;
+        const stateEl = tp.querySelector('.state');
+        const dotEl = tp.querySelector('.dot-sm');
+        if (stateEl) stateEl.textContent = status;
+        if (dotEl && color) dotEl.style.background = color;
+        if (status === 'RUNNING') {
+            tp.classList.add('active');
+        } else {
+            tp.classList.remove('active');
+        }
+    },
+
+    log(thread, msg, type = 'normal') {
+        const log = document.getElementById('thread-log');
+        const now = new Date();
+        const time = now.toTimeString().substr(0,8) + '.' + String(now.getMilliseconds()).padStart(3,'0');
+
+        const colorMap = {
+            presence: 'var(--accent)',
+            sync: 'var(--accent2)',
+            bw: 'var(--accent3)',
+            save: '#b794f4',
+            conn: 'var(--warn)',
+            sys: 'var(--muted)'
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        const msgClass = type === 'ok' ? 'ok' : type === 'err' ? 'err' : type === 'warn' ? 'warn' : '';
+        entry.innerHTML = `
+            <span class="log-time">${time}</span>
+            <span class="log-thread t-${thread}" style="color:${colorMap[thread]||'var(--muted)'}">[${thread.toUpperCase()}]</span>
+            <span class="log-msg ${msgClass}">${msg}</span>
+        `;
+        log.appendChild(entry);
 
-        // --- 1. CƠ CHẾ HIỆN DIỆN (PRESENCE) ---
-        const presenceRef = ref(db, "presence");
-        const myPresenceRef = push(presenceRef);
-        set(myPresenceRef, { online: true, last_seen: serverTimestamp() });
-        onDisconnect(myPresenceRef).remove();
+        // Keep max 200 entries
+        while (log.children.length > 200) log.removeChild(log.firstChild);
+        log.scrollTop = log.scrollHeight;
+    }
+};
 
-        onValue(presenceRef, (snapshot) => {
-            const count = snapshot.val() ? Object.keys(snapshot.val()).length : 0;
-            document.getElementById("node-count").innerText = count;
-        });
+// --- UPTIME TICKER ---
+function startUptimeTicker() {
+    setInterval(() => {
+        const secs = Math.floor((Date.now() - State.startTime) / 1000);
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = secs % 60;
+        document.getElementById('uptime-label').textContent =
+            h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    }, 1000);
+}
 
-        // --- 2. CƠ CHẾ LƯU TRỮ VÀ CHIA SẺ DỮ LIỆU ---
-        const dataRef = ref(db, "/");
+// --- FIREBASE LOADER (THREAD: SYS) ---
+async function loadFirebase(databaseURL) {
+    Thread.log('sys', 'Đang tải Firebase modules...', 'warn');
+    Thread.setStatus('conn', 'LOADING', 'var(--warn)');
 
-        onValue(dataRef, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
+    const { initializeApp, deleteApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js");
+    const { getDatabase, ref, onValue, onDisconnect, set, serverTimestamp } =
+        await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js");
 
-            // Loại bỏ phần presence để không lưu thừa
-            const cleanData = { ...data };
-            delete cleanData.presence;
+    // Cleanup old app
+    const apps = getApps();
+    for (const app of apps) {
+        await deleteApp(app).catch(() => {});
+    }
 
-            // Hiển thị giao diện
-            document.getElementById("data-display").innerText = JSON.stringify(cleanData, null, 2);
+    const app = initializeApp({ databaseURL });
+    const db = getDatabase(app);
 
-            // LƯU VÀO MÁY CỤC BỘ (LocalStorage)
-            // Ngay khi có dữ liệu mới, node này sẽ lưu lại để có thể phục vụ máy khác sau này
-            localStorage.setItem("p2p_shared_data", JSON.stringify(cleanData));
-            
-            const time = new Date().toLocaleTimeString();
-            document.getElementById("storage-status").innerText = `Đã cập nhật bộ nhớ cục bộ lúc: ${time}`;
-            
-            console.log("Đã đồng bộ và lưu dữ liệu mới về máy.");
-        });
+    Thread.log('sys', `Firebase init OK → ${databaseURL.split('//')[1].split('.')[0]}`, 'ok');
+    State.firebaseApp = app;
+    State.db = db;
+    State.firebaseModules = { ref, onValue, onDisconnect, set, serverTimestamp };
 
-        // --- 3. KIỂM TRA DỮ LIỆU CŨ KHI OFFLINE ---
-        window.addEventListener('load', () => {
-            const cachedData = localStorage.getItem("p2p_shared_data");
-            if (cachedData) {
-                document.getElementById("data-display").innerText = cachedData + "\n\n(Dữ liệu từ bộ nhớ máy - Offline Mode)";
-                document.getElementById("storage-status").innerText = "Đang hiển thị dữ liệu lưu sẵn trên máy.";
-            }
-        });
-    </script>
+    return State.firebaseModules;
+}
+
+// --- THREAD: CONNECTION WATCHDOG ---
+function startWatchdogThread({ ref, onValue }) {
+    Thread.setStatus('conn', 'RUNNING', 'var(--warn)');
+    Thread.log('conn', 'Watchdog thread started');
+
+    const connRef = ref(State.db, '.info/connected');
+    const dot = document.getElementById('conn-dot');
+    const label = document.getElementById('conn-label');
+
+    const unsub = onValue(connRef, snap => {
+        if (snap.val() === true) {
+            State.isConnected = true;
+            dot.className = 'pulse';
+            label.textContent = `Đang hoạt động — ${State.nodeId.substr(0,14)}`;
+            Thread.log('conn', 'Kết nối Firebase ổn định ✓', 'ok');
+            Thread.setStatus('conn', 'CONNECTED', 'var(--accent)');
+        } else {
+            State.isConnected = false;
+            dot.className = 'pulse offline';
+            label.textContent = 'Mất kết nối — đang thử lại...';
+            Thread.log('conn', 'Mất kết nối Firebase!', 'err');
+            Thread.setStatus('conn', 'OFFLINE', '#ff4c4c');
+        }
+    });
+    State.unsubscribers.push(unsub);
+}
+
+// --- THREAD: PRESENCE ---
+async function startPresenceThread({ ref, onValue, onDisconnect, set, serverTimestamp }) {
+    Thread.setStatus('presence', 'RUNNING', 'var(--accent)');
+    Thread.log('presence', 'Presence thread started');
+    Thread.log('presence', `Node ID: ${State.nodeId}`);
+
+    // Clear old presence
+    if (State.currentPresenceRef) {
+        await set(State.currentPresenceRef, null).catch(() => {});
+        Thread.log('presence', 'Cleared old presence ref');
+    }
+
+    const presenceBase = ref(State.db, 'presence');
+    State.currentPresenceRef = ref(presenceBase, State.nodeId);
+
+    await set(State.currentPresenceRef, {
+        online: true,
+        joined: serverTimestamp(),
+        userAgent: navigator.userAgent.substring(0, 80),
+        nodeId: State.nodeId
+    });
+    Thread.log('presence', 'Đã đánh dấu node ONLINE', 'ok');
+
+    onDisconnect(State.currentPresenceRef).remove();
+    Thread.log('presence', 'onDisconnect hook đã đăng ký');
+
+    // Watch all presence nodes
+    const unsub = onValue(presenceBase, snap => {
+        const data = snap.val() || {};
+        const nodeList = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+        State.nodes = nodeList;
+        const count = nodeList.length;
+
+        document.getElementById('m-nodes').textContent = count;
+        document.getElementById('m-nodes-sub').textContent =
+            count === 1 ? 'Chỉ có node này' : `${count} nodes đang online`;
+        document.getElementById('mesh-info').textContent = `${count} nodes`;
+
+        Thread.log('presence', `Node count cập nhật: ${count}`, count > 1 ? 'ok' : 'normal');
+        Thread.setStatus('presence', `${count} NODES`, 'var(--accent)');
+
+        renderMeshTopology(nodeList);
+    });
+    State.unsubscribers.push(unsub);
+}
+
+// --- THREAD: DATA SYNC ---
+function startSyncThread({ ref, onValue }) {
+    Thread.setStatus('sync', 'RUNNING', 'var(--accent2)');
+    Thread.log('sync', 'Data sync thread started');
+
+    const dataRef = ref(State.db, '/');
+
+    const unsub = onValue(dataRef, snap => {
+        Thread.log('sync', 'Firebase snapshot nhận được', 'ok');
+        Thread.setStatus('sync', 'SYNCING', 'var(--accent2)');
+
+        const raw = snap.val() || {};
+        const cleaned = { ...raw };
+        delete cleaned.presence;
+
+        const jsonStr = JSON.stringify(cleaned, null, 2) || 'Chưa có dữ liệu';
+        const byteSize = new TextEncoder().encode(jsonStr).length;
+
+        // Bandwidth tracking
+        const delta = byteSize - State.lastBwBytes;
+        if (delta > 0) {
+            State.totalBytes += delta;
+            State.bwHistory[State.bwHistory.length - 1] += delta;
+        }
+        State.lastBwBytes = byteSize;
+
+        State.syncCount++;
+        State.lastSyncData = cleaned;
+
+        // Update UI
+        document.getElementById('data-display').textContent = jsonStr;
+        document.getElementById('m-bytes').textContent = formatBytes(State.totalBytes);
+        document.getElementById('m-bytes-sub').textContent = `bytes tổng nhận`;
+        document.getElementById('m-syncs').textContent = State.syncCount;
+        document.getElementById('data-size').textContent = `${formatBytes(byteSize)}`;
+
+        const t = new Date().toLocaleTimeString('vi-VN');
+        document.getElementById('m-sync-sub').textContent = `lần — ${t}`;
+
+        Thread.log('sync', `Sync #${State.syncCount}: ${formatBytes(byteSize)}`, 'ok');
+        Thread.setStatus('sync', `SYNC #${State.syncCount}`, 'var(--accent2)');
+
+        // Trigger persist thread
+        persistData(cleaned, byteSize);
+    });
+    State.unsubscribers.push(unsub);
+}
+
+// --- THREAD: PERSIST (SAVE) ---
+function persistData(data, byteSize) {
+    Thread.setStatus('persist', 'WRITING', '#b794f4');
+    Thread.log('save', `Đang lưu ${formatBytes(byteSize)} vào localStorage...`);
+
+    try {
+        const payload = {
+            data,
+            savedAt: new Date().toISOString(),
+            nodeId: State.nodeId,
+            byteSize
+        };
+        localStorage.setItem('p2p_v2_data', JSON.stringify(payload));
+        localStorage.setItem('p2p_v2_meta', JSON.stringify({
+            lastSync: Date.now(),
+            totalBytes: State.totalBytes,
+            syncCount: State.syncCount
+        }));
+        Thread.log('save', `Lưu OK — ${formatBytes(byteSize)} → localStorage`, 'ok');
+        Thread.setStatus('persist', 'SAVED', '#b794f4');
+    } catch(e) {
+        Thread.log('save', `Lưu thất bại: ${e.message}`, 'err');
+        Thread.setStatus('persist', 'ERROR', '#ff4c4c');
+    }
+}
+
+// --- THREAD: BANDWIDTH MONITOR ---
+function startBandwidthThread() {
+    Thread.setStatus('bandwidth', 'RUNNING', 'var(--accent3)');
+    Thread.log('bw', 'Bandwidth monitor thread started');
+
+    const canvas = document.getElementById('bw-canvas');
+    let prevBytes = State.totalBytes;
+    let tick = 0;
+
+    State.bwInterval = setInterval(() => {
+        const current = State.totalBytes;
+        const delta = current - prevBytes;
+        prevBytes = current;
+
+        // Simulate outbound shared bandwidth (fraction of received)
+        const shared = Math.floor(delta * (State.nodes.length > 1 ? (State.nodes.length - 1) * 0.3 : 0));
+
+        State.bwHistory.push(delta);
+        State.bwShared.push(shared);
+        State.bwHistory.shift();
+        State.bwShared.shift();
+
+        const avgBw = State.bwHistory.slice(-10).reduce((a,b) => a+b, 0) / 10;
+        document.getElementById('m-bw').textContent = formatBytes(Math.round(avgBw));
+        document.getElementById('bw-current').textContent = `${formatBytes(delta)}/s in · ${formatBytes(shared)}/s shared`;
+
+        drawBandwidthChart(canvas);
+
+        tick++;
+        if (tick % 10 === 0) {
+            Thread.log('bw', `BW avg: ${formatBytes(Math.round(avgBw))}/s · shared: ${formatBytes(shared)}/s`);
+        }
+    }, 1000);
+}
+
+// --- BANDWIDTH CHART RENDERER ---
+function drawBandwidthChart(canvas) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.offsetWidth;
+    const H = 120;
+    canvas.width = W;
+    canvas.height = H;
+
+    ctx.fillStyle = '#080c10';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = (H / 4) * i;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    const maxVal = Math.max(...State.bwHistory, ...State.bwShared, 100);
+    const points = State.bwHistory.length;
+    const step = W / (points - 1);
+
+    // Inbound fill
+    const gradIn = ctx.createLinearGradient(0, 0, 0, H);
+    gradIn.addColorStop(0, 'rgba(255,107,53,0.5)');
+    gradIn.addColorStop(1, 'rgba(255,107,53,0.02)');
+
+    ctx.beginPath();
+    State.bwHistory.forEach((v, i) => {
+        const x = i * step;
+        const y = H - (v / maxVal) * (H - 8) - 4;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fillStyle = gradIn;
+    ctx.fill();
+
+    // Inbound line
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,107,53,0.9)';
+    ctx.lineWidth = 2;
+    State.bwHistory.forEach((v, i) => {
+        const x = i * step;
+        const y = H - (v / maxVal) * (H - 8) - 4;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Shared fill
+    const gradSh = ctx.createLinearGradient(0, 0, 0, H);
+    gradSh.addColorStop(0, 'rgba(0,180,255,0.4)');
+    gradSh.addColorStop(1, 'rgba(0,180,255,0.01)');
+
+    ctx.beginPath();
+    State.bwShared.forEach((v, i) => {
+        const x = i * step;
+        const y = H - (v / maxVal) * (H - 8) - 4;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fillStyle = gradSh;
+    ctx.fill();
+
+    // Shared line
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0,180,255,0.8)';
+    ctx.lineWidth = 1.5;
+    State.bwShared.forEach((v, i) => {
+        const x = i * step;
+        const y = H - (v / maxVal) * (H - 8) - 4;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+}
+
+// --- NODE MESH TOPOLOGY RENDERER ---
+function renderMeshTopology(nodes) {
+    const canvas = document.getElementById('node-canvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.offsetWidth || 800;
+    const H = 180;
+    canvas.width = W;
+    canvas.height = H;
+
+    ctx.fillStyle = '#080c10';
+    ctx.fillRect(0, 0, W, H);
+
+    if (nodes.length === 0) {
+        ctx.fillStyle = '#7d8590';
+        ctx.font = '13px Share Tech Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Đang chờ nodes...', W/2, H/2);
+        return;
+    }
+
+    // Position nodes in circle + center
+    const cx = W / 2, cy = H / 2;
+    const radius = Math.min(W, H) * 0.32;
+
+    const positions = nodes.map((n, i) => {
+        if (nodes.length === 1) return { x: cx, y: cy, node: n };
+        const angle = (i / nodes.length) * 2 * Math.PI - Math.PI / 2;
+        return {
+            x: cx + Math.cos(angle) * radius,
+            y: cy + Math.sin(angle) * radius,
+            node: n
+        };
+    });
+
+    // Draw edges
+    ctx.lineWidth = 1;
+    for (let i = 0; i < positions.length; i++) {
+        for (let j = i + 1; j < positions.length; j++) {
+            const a = positions[i], b = positions[j];
+            const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+            grad.addColorStop(0, 'rgba(0,255,136,0.2)');
+            grad.addColorStop(1, 'rgba(0,180,255,0.2)');
+            ctx.beginPath();
+            ctx.strokeStyle = grad;
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+        }
+    }
+
+    // Draw nodes
+    positions.forEach(({ x, y, node }, i) => {
+        const isSelf = node.id === State.nodeId;
+        const color = isSelf ? 'var(--accent)' : '#00b4ff';
+        const r = isSelf ? 10 : 7;
+
+        // Glow
+        const grd = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+        grd.addColorStop(0, isSelf ? 'rgba(0,255,136,0.3)' : 'rgba(0,180,255,0.2)');
+        grd.addColorStop(1, 'transparent');
+        ctx.beginPath();
+        ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = grd;
+        ctx.fill();
+
+        // Node dot
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = isSelf ? '#00ff88' : '#00b4ff';
+        ctx.fill();
+
+        // Label
+        ctx.font = `${isSelf ? 'bold ' : ''}10px Share Tech Mono, monospace`;
+        ctx.fillStyle = isSelf ? '#00ff88' : '#7d8590';
+        ctx.textAlign = 'center';
+        const label = isSelf ? '● YOU' : node.id.substr(5, 8);
+        ctx.fillText(label, x, y + r + 13);
+    });
+}
+
+// --- TEARDOWN: unsubscribe all listeners ---
+function teardown() {
+    Thread.log('sys', 'Tearing down tất cả listeners...', 'warn');
+    State.unsubscribers.forEach(fn => { try { fn(); } catch(e) {} });
+    State.unsubscribers = [];
+    if (State.bwInterval) { clearInterval(State.bwInterval); State.bwInterval = null; }
+    Thread.setStatus('presence', 'STOPPED', '#ff4c4c');
+    Thread.setStatus('sync', 'STOPPED', '#ff4c4c');
+    Thread.setStatus('bandwidth', 'STOPPED', '#ff4c4c');
+    Thread.setStatus('persist', 'STOPPED', '#ff4c4c');
+    Thread.setStatus('conn', 'STOPPED', '#ff4c4c');
+}
+
+// --- MAIN INIT ---
+async function initP2P(databaseURL) {
+    const dot = document.getElementById('conn-dot');
+    dot.className = 'pulse connecting';
+
+    Thread.log('sys', '══════════════════════════════', 'warn');
+    Thread.log('sys', `Khởi động hệ thống P2P...`);
+    Thread.log('sys', `URL: ${databaseURL.split('//')[1]}`);
+    Thread.log('sys', `Node: ${State.nodeId}`);
+
+    try {
+        // Load cache first
+        const cached = localStorage.getItem('p2p_v2_data');
+        if (cached) {
+            const { data, savedAt } = JSON.parse(cached);
+            document.getElementById('data-display').textContent =
+                JSON.stringify(data, null, 2) + `\n\n// [Cache từ ${savedAt}]`;
+            Thread.log('save', `Cache loaded (${savedAt})`, 'ok');
+        }
+
+        // Thread 1: Load Firebase
+        const modules = await loadFirebase(databaseURL);
+
+        // Thread 2: Connection Watchdog
+        startWatchdogThread(modules);
+
+        // Thread 3: Presence
+        await startPresenceThread(modules);
+
+        // Thread 4: Data Sync
+        startSyncThread(modules);
+
+        // Thread 5: Bandwidth
+        startBandwidthThread();
+
+        Thread.log('sys', '✅ Tất cả threads đã khởi động', 'ok');
+        document.getElementById('config-status').textContent =
+            `✓ Đang dùng: ${databaseURL.split('//')[1].split('.')[0]}`;
+
+    } catch(err) {
+        Thread.log('sys', `FATAL: ${err.message}`, 'err');
+        document.getElementById('data-display').textContent =
+            `LỖI: ${err.message}\n\nKiểm tra Firebase URL và quyền truy cập.`;
+        dot.className = 'pulse offline';
+    }
+}
+
+// --- EXPOSED FUNCTIONS ---
+window.changeFirebaseURL = async function() {
+    const url = document.getElementById('firebase-url').value.trim();
+    if (!url || !url.includes('firebasedatabase.app')) {
+        showToast('⚠ URL không hợp lệ!');
+        return;
+    }
+
+    Thread.log('sys', `Đang chuyển đổi sang DB mới: ${url.split('//')[1].split('.')[0]}`, 'warn');
+    document.getElementById('config-status').textContent = 'Đang kết nối tới database mới...';
+
+    // Teardown current
+    teardown();
+
+    // Reset state
+    State.totalBytes = 0;
+    State.syncCount = 0;
+    State.lastBwBytes = 0;
+    State.bwHistory = new Array(60).fill(0);
+    State.bwShared = new Array(60).fill(0);
+    State.nodes = [];
+
+    // Reset UI
+    ['m-nodes','m-bytes','m-syncs','m-bw'].forEach(id => {
+        document.getElementById(id).textContent = '0';
+    });
+    document.getElementById('data-display').textContent = 'Đang tải dữ liệu từ database mới...';
+    document.getElementById('node-canvas').getContext('2d').clearRect(0,0,9999,9999);
+
+    // Load new DB data then init
+    Thread.log('sys', 'Đang tải dữ liệu từ URL mới...', 'warn');
+    await initP2P(url);
+    showToast('✓ Đã kết nối database mới và tải dữ liệu!');
+};
+
+window.exportData = function() {
+    if (!State.lastSyncData) { showToast('Chưa có dữ liệu để export!'); return; }
+    const blob = new Blob([JSON.stringify(State.lastSyncData, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `p2p_data_${Date.now()}.json`;
+    a.click();
+    Thread.log('save', 'Export JSON thành công', 'ok');
+    showToast('✓ Đã export dữ liệu!');
+};
+
+window.clearCache = function() {
+    localStorage.removeItem('p2p_v2_data');
+    localStorage.removeItem('p2p_v2_meta');
+    Thread.log('save', 'Cache đã xoá', 'warn');
+    showToast('🗑 Đã xoá cache!');
+};
+
+window.forceSync = async function() {
+    if (!State.firebaseModules || !State.db) { showToast('Chưa kết nối Firebase!'); return; }
+    Thread.log('sync', 'Force sync requested...', 'warn');
+    Thread.setStatus('sync', 'FORCE', 'var(--accent2)');
+    showToast('↺ Đang force sync...');
+};
+
+window.clearLog = function() {
+    document.getElementById('thread-log').innerHTML = '';
+    Thread.log('sys', 'Log đã được xoá');
+};
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+    return (b/(1024*1024)).toFixed(2) + ' MB';
+}
+
+// --- BOOT ---
+window.addEventListener('load', () => {
+    startUptimeTicker();
+    const defaultURL = document.getElementById('firebase-url').value;
+    initP2P(defaultURL);
+});
+</script>
 </body>
 </html>
