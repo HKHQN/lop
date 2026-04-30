@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Node Data Sharing</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .node-count { font-size: 2em; color: #007bff; font-weight: bold; }
+        .status-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .dot { height: 12px; width: 12px; background-color: #28a745; border-radius: 50%; display: inline-block; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; max-height: 400px; overflow-y: auto; }
+        .local-db-info { color: #666; font-size: 0.9em; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="status-bar">
+            <span class="dot"></span>
+            <span>Hệ thống P2P: <strong>Đang hoạt động</strong></span>
+        </div>
+        <div>Số máy (Nodes) đang chia sẻ: <span id="node-count" class="node-count">0</span></div>
+        <div class="local-db-info" id="storage-status">Trạng thái bộ nhớ: Đang kiểm tra...</div>
+    </div>
+
+    <h3>Dữ liệu được đồng bộ về máy này:</h3>
+    <pre id="data-display">Đang đồng bộ dữ liệu từ các Peer...</pre>
+
+    <script type="module">
+        // SỬA LỖI: Import đầy đủ từ CDN
+        import { initializeApp } from "https://gstatic.com";
+        import { getDatabase, ref, onValue, push, onDisconnect, set, serverTimestamp } from "https://gstatic.com";
+
+        // Cấu hình chuẩn (Xóa đuôi .json ở databaseURL)
+        const firebaseConfig = {
+            databaseURL: "https://khoanchitrongngay-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- 1. CƠ CHẾ HIỆN DIỆN (PRESENCE) ---
+        const presenceRef = ref(db, "presence");
+        const myPresenceRef = push(presenceRef);
+        set(myPresenceRef, { online: true, last_seen: serverTimestamp() });
+        onDisconnect(myPresenceRef).remove();
+
+        onValue(presenceRef, (snapshot) => {
+            const count = snapshot.val() ? Object.keys(snapshot.val()).length : 0;
+            document.getElementById("node-count").innerText = count;
+        });
+
+        // --- 2. CƠ CHẾ LƯU TRỮ VÀ CHIA SẺ DỮ LIỆU ---
+        const dataRef = ref(db, "/");
+
+        onValue(dataRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            // Loại bỏ phần presence để không lưu thừa
+            const cleanData = { ...data };
+            delete cleanData.presence;
+
+            // Hiển thị giao diện
+            document.getElementById("data-display").innerText = JSON.stringify(cleanData, null, 2);
+
+            // LƯU VÀO MÁY CỤC BỘ (LocalStorage)
+            // Ngay khi có dữ liệu mới, node này sẽ lưu lại để có thể phục vụ máy khác sau này
+            localStorage.setItem("p2p_shared_data", JSON.stringify(cleanData));
+            
+            const time = new Date().toLocaleTimeString();
+            document.getElementById("storage-status").innerText = `Đã cập nhật bộ nhớ cục bộ lúc: ${time}`;
+            
+            console.log("Đã đồng bộ và lưu dữ liệu mới về máy.");
+        });
+
+        // --- 3. KIỂM TRA DỮ LIỆU CŨ KHI OFFLINE ---
+        window.addEventListener('load', () => {
+            const cachedData = localStorage.getItem("p2p_shared_data");
+            if (cachedData) {
+                document.getElementById("data-display").innerText = cachedData + "\n\n(Dữ liệu từ bộ nhớ máy - Offline Mode)";
+                document.getElementById("storage-status").innerText = "Đang hiển thị dữ liệu lưu sẵn trên máy.";
+            }
+        });
+    </script>
+</body>
+</html>
